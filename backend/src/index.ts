@@ -113,7 +113,11 @@ app.post('/projects', authenticateToken, async (req: Request, res: Response) => 
             },
             include: {
                 members: true,
-                boards: true
+                boards: {
+                    include: {
+                        columns: true
+                    }
+                }
             }
         });
         res.status(201).json({ message: 'Project created successfully!', project });
@@ -123,6 +127,53 @@ app.post('/projects', authenticateToken, async (req: Request, res: Response) => 
     }
 });
 
+app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
+    const { 
+        title, 
+        description, 
+        type, 
+        status, 
+        priority, 
+        projectId, 
+        dueDate, 
+        assigneeId, 
+        parentId 
+    }: {
+        title: string;
+        description: string;
+        type: string;
+        status: string;
+        priority: string;
+        projectId: number;
+        dueDate?: string;
+        assigneeId?: number;
+        parentId?: number;
+    } = req.body;
+    
+    const reporterId = res.locals.user.userId;
+
+    try {
+        const newIssue = await prisma.issue.create({
+            data: {
+                title,
+                description,
+                type,     
+                status,    
+                priority,    
+                projectId,
+                reporterId,
+                dueDate: dueDate ? new Date(dueDate) : null,
+                assigneeId: assigneeId ?? null,
+                parentId: parentId ?? null
+            }
+        });
+
+        res.status(201).json({ message: 'Issue created successfully!', issue: newIssue });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create issue' });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('The Task Board Backend is Running!');

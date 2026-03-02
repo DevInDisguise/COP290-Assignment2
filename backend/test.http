@@ -1,8 +1,12 @@
-### Create a Project Test
-POST http://localhost:3000/projects
+### Create a Task Test
+POST http://localhost:3000/issues
 Content-Type: application/json
 
 {
-    "name": "Test",
-    "description": "My first project"
+    "title": "Design the Login Screen",
+    "description": "Create the UI mockup for the new login page.",
+    "type": "TASK",
+    "status": "To Do",
+    "priority": "HIGH",
+    "projectId": 14 
 }
