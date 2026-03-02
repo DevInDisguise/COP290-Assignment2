@@ -1,8 +1,8 @@
-POST http://localhost:3000/register
+### Create a Project Test
+POST http://localhost:3000/projects
 Content-Type: application/json
 
 {
-    "name": "Devansh",
-    "email": "devansh@example.com",
-    "password": "my-secret-password"
+    "name": "Test",
+    "description": "My first project"
 }

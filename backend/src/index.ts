@@ -1,36 +1,128 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'; // NEW
+import cookieParser from 'cookie-parser'; // NEW
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = 3000;
 
-app.use(express.json());
+const JWT_SECRET = "my-super-secret-key-change-this-later";
 
-// --- REGISTRATION ROUTE ---
+const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        res.status(401).json({ error: 'Access denied. Please login.' });
+        return;
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        res.locals.user = decoded;
+
+        next();
+    }
+    catch (error) {
+        res.status(400).json({ error: 'Invalid token' });
+    }
+}
+
+app.use(express.json());
+app.use(cookieParser());
+
 app.post('/register', async (req, res) => {
-    const { email, password, name } = req.body;
+    const { name, email, password } = req.body;
 
     try {
-        // 1. Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 2. Save to Database
-        const newUser = await prisma.user.create({
+        const user = await prisma.user.create({
             data: {
-                email,
                 name,
+                email,
                 password: hashedPassword,
-            },
+                role: 'USER'
+            }
         });
 
-        res.json({ message: 'User created!', userId: newUser.id });
+        res.status(201).json({ message: 'User registered successfully!', userId: user.id });
     } catch (error) {
         console.error(error);
-        res.status(400).json({ error: 'User already exists or data is invalid' });
+        res.status(500).json({ error: 'Something went wrong during registration' });
     }
 });
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            maxAge: 3600000
+        });
+
+        res.json({ message: 'Login successful!', userId: user.id });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong during login' });
+    }
+});
+
+
+app.post('/projects', authenticateToken, async (req: Request, res: Response) => {
+    const { name, description } = req.body;
+    const loggedInUser = res.locals.user;
+    try {
+        const project = await prisma.project.create({
+            data: {
+                name,
+                description,
+                members: {
+                    create: {
+                        userId: loggedInUser.userId,
+                        role: 'PROJECT_ADMIN'
+                    }
+                },
+                boards: {
+                    create: {
+                        name: 'Default Board',
+                        columns: {
+                            create: [
+                                {name: 'To Do', order: 1},
+                                {name: 'In Progress', order: 2},
+                                {name: 'Review', order: 3},
+                                {name: 'Done', order: 4}
+                            ]
+                        }
+                    }
+                }
+            },
+            include: {
+                members: true,
+                boards: true
+            }
+        });
+        res.status(201).json({ message: 'Project created successfully!', project });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to create project' });
+    }
+});
+
 
 app.get('/', (req, res) => {
     res.send('The Task Board Backend is Running!');

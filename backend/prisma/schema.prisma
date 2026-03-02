@@ -1,19 +1,97 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-
 datasource db {
-  provider = "sqlite"
+    provider = "sqlite"
+    url      = "file:./dev.db"
 }
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  name     String
-  role     String  @default("PROJECT_VIEWER") 
+    id             Int             @id @default(autoincrement())
+    email          String          @unique
+    password       String
+    name           String
+    role           String          @default("GLOBAL_VIEWER")
+    
+    projects       ProjectMember[]
+    
+    reportedIssues Issue[]         @relation("ReportedIssues")
+    assignedIssues Issue[]         @relation("AssignedIssues")
+}
+
+model Project {
+    id          Int             @id @default(autoincrement())
+    name        String
+    description String
+    createdAt   DateTime        @default(now())
+    updatedAt   DateTime        @updatedAt
+
+    members     ProjectMember[]
+    boards      Board[]
+    
+    issues      Issue[]
+}
+
+model Board {
+    id        Int      @id @default(autoincrement())
+    name      String
+    projectId Int
+
+    project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    columns   Column[] 
+}
+
+model Column {
+    id      Int    @id @default(autoincrement())
+    name    String
+    order   Int
+    boardId Int
+
+    board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+}
+
+model ProjectMember {
+    id        Int    @id @default(autoincrement())
+    userId    Int
+    projectId Int
+    role      String @default("PROJECT_MEMBER") // Admin, Member, or Viewer
+
+    user      User   @relation(fields: [userId], references: [id])
+    project   Project @relation(fields: [projectId], references: [id])
+
+    @@unique([userId, projectId])
+}
+
+model Issue {
+    id          Int       @id @default(autoincrement())
+    title       String
+    description String?   
+    type        String    // "STORY", "TASK", or "BUG"
+    status      String    // e.g., "To Do", "In Progress"
+    priority    String    // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    dueDate     DateTime?
+
+    // Which project does this belong to?
+    projectId   Int
+    project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    // Who created it? (The Reporter)
+    reporterId  Int
+    reporter    User      @relation("ReportedIssues", fields: [reporterId], references: [id])
+
+    // Who is working on it? (The Assignee - Optional at first)
+    assigneeId  Int?
+    assignee    User?     @relation("AssignedIssues", fields: [assigneeId], references: [id])
+
+    // Parent/Child relationship for Stories -> Tasks/Bugs
+    parentId    Int?
+    parent      Issue?    @relation("SubIssues", fields: [parentId], references: [id])
+    children    Issue[]   @relation("SubIssues")
+
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
 }
