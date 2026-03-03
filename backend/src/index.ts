@@ -153,6 +153,20 @@ app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
     const reporterId = res.locals.user.userId;
 
     try {
+        // Check if user is a member of the project
+        const membership = await prisma.projectMember.findFirst({
+            where: {
+                AND: [
+                    { projectId },
+                    { userId: reporterId }
+                ]
+            }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
         const newIssue = await prisma.issue.create({
             data: {
                 title,
@@ -174,6 +188,141 @@ app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to create issue' });
     }
 });
+
+app.patch('/issues/:id', authenticateToken, async (req: Request, res: Response) => {
+    const issueId = parseInt(req.params.id as string);
+    const userId = res.locals.user.userId;
+
+    const {status, priority, assigneeId, title, description} = req.body;
+
+    try {
+        // Get the issue to find its project
+        const issue = await prisma.issue.findUnique({
+            where: { id: issueId }
+        });
+
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+
+        // Check if user is a member of the project
+        const membership = await prisma.projectMember.findFirst({
+            where: {
+                AND: [
+                    { projectId: issue.projectId },
+                    { userId }
+                ]
+            }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
+        const updatedIssue = await prisma.issue.update({
+            where: { id: issueId },
+            data: {
+                status,
+                priority,
+                assigneeId,
+                title,
+                description
+            }
+        });
+
+        res.json({ message: 'Issue updated successfully!', issue: updatedIssue });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update issue' });
+    }
+});
+
+
+app.get('/projects/:id', authenticateToken, async (req: Request, res: Response) => {
+    const projectId = parseInt(req.params.id as string);
+    const loggedInUser = res.locals.user;
+    try {
+        const membership = await prisma.projectMember.findFirst({
+            where: {
+                AND: [
+                    { projectId },
+                    { userId: loggedInUser.userId }
+                ]
+            }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },   
+            include: {
+                members: {
+                    include: {
+                        user: true
+                    }
+                },
+                boards: {
+                    include: {
+                        columns: true
+                    }
+                },
+                issues: true
+            }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        res.json({ project });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch project' });
+    }
+});
+
+
+app.delete('/issues/:id', authenticateToken, async (req: Request, res: Response) => {
+    const issueId = parseInt(req.params.id as string);
+    const userId = res.locals.user.userId;
+
+    try {
+        // Get the issue to find its project
+        const issue = await prisma.issue.findUnique({
+            where: { id: issueId }
+        });
+
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+
+        // Check if user is a member of the project
+        const membership = await prisma.projectMember.findFirst({
+            where: {
+                AND: [
+                    { projectId: issue.projectId },
+                    { userId }
+                ]
+            }
+        });
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
+        await prisma.issue.delete({
+            where: { id: issueId }
+        });
+
+        res.json({ message: 'Issue deleted successfully!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to delete issue' });
+    }
+});     
+
+
 
 app.get('/', (req, res) => {
     res.send('The Task Board Backend is Running!');

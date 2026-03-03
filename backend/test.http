@@ -1,12 +1,72 @@
-### Create a Task Test
+### ==========================================
+### KANBAN BOARD MASTER TEST SCRIPT
+### ==========================================
+
+### 1. Register a New User
+# (If this email already exists, change it slightly, e.g., devansh2@example.com)
+POST http://localhost:3000/register
+Content-Type: application/json
+
+{
+    "email": "dev@example.com",
+    "password": "my-password",
+    "name": "Devansh"
+}
+
+
+### ------------------------------------------
+### 2. Login (This saves the security cookie!)
+POST http://localhost:3000/login
+Content-Type: application/json
+
+{
+    "email": "dev@example.com",
+    "password": "my-password"
+}
+
+
+### ------------------------------------------
+### 3. Create a Project
+# LOOK AT THE RESPONSE: Find the "id" of the project it creates.
+POST http://localhost:3000/projects
+Content-Type: application/json
+
+{
+    "name": "Master Test Project",
+    "description": "Testing the entire flow from scratch."
+}
+
+
+### ------------------------------------------
+### 4. Create a Task
+# CHANGE THE "projectId" BELOW to match the ID from Step 3!
+# LOOK AT THE RESPONSE: Find the "id" of this new issue.
 POST http://localhost:3000/issues
 Content-Type: application/json
 
 {
-    "title": "Design the Login Screen",
-    "description": "Create the UI mockup for the new login page.",
+    "title": "Build the Frontend",
+    "description": "Connect React to these endpoints.",
     "type": "TASK",
     "status": "To Do",
     "priority": "HIGH",
-    "projectId": 14 
+    "projectId": 1
+}
+
+
+### ------------------------------------------
+### 5. Get the Full Project State (The Big Payload)
+# CHANGE THE URL NUMBER BELOW to match your Project ID!
+GET http://localhost:3000/projects/1
+
+
+### ------------------------------------------
+### 6. Update the Task (Simulate Drag & Drop)
+# CHANGE THE URL NUMBER BELOW to match the Issue ID from Step 4!
+PATCH http://localhost:3000/issues/1
+Content-Type: application/json
+
+{
+    "status": "In Progress",
+    "priority": "CRITICAL"
 }
