@@ -8,8 +8,8 @@ POST http://localhost:3000/register
 Content-Type: application/json
 
 {
-    "email": "dev@example.com",
-    "password": "my-password",
+    "email": "devansh@email.com",
+    "password": "pass123",
     "name": "Devansh"
 }
 
@@ -57,7 +57,7 @@ Content-Type: application/json
 ### ------------------------------------------
 ### 5. Get the Full Project State (The Big Payload)
 # CHANGE THE URL NUMBER BELOW to match your Project ID!
-GET http://localhost:3000/projects/1
+GET http://localhost:3000/projects
 
 
 ### ------------------------------------------

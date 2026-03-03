@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken'; // NEW
 import cookieParser from 'cookie-parser'; // NEW
+import cors from 'cors';
+
+
 
 const app = express();
 const prisma = new PrismaClient();
@@ -28,6 +31,11 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
         res.status(400).json({ error: 'Invalid token' });
     }
 }
+
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -237,6 +245,38 @@ app.patch('/issues/:id', authenticateToken, async (req: Request, res: Response) 
     }
 });
 
+
+app.get('/projects', authenticateToken, async (req: Request, res: Response) => {
+    const loggedInUser = res.locals.user;
+    try {
+        const projects = await prisma.project.findMany({
+            where: {
+                members: {
+                    some: {
+                        userId: loggedInUser.userId
+                    }
+                }
+            },
+            include: {
+                members: {
+                    include: {
+                        user: true
+                    }
+                },
+                boards: {
+                    include: {
+                        columns: true
+                    }
+                }
+            }
+        });
+
+        res.json({ projects });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+});
 
 app.get('/projects/:id', authenticateToken, async (req: Request, res: Response) => {
     const projectId = parseInt(req.params.id as string);
