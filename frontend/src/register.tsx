@@ -3,8 +3,8 @@ import { api } from './api';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
-    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function Login() {
         
         try {
             await api.post('/register', {name, email, password });
+            // Redirect to the dashboard immediately after a successful login!
             navigate('/login');
         } catch (err: any) {
             setError(err.response?.data?.error || 'A network error occurred.');
@@ -22,7 +23,7 @@ export default function Login() {
     };
 
     return (
-        <div style={{ padding: '2rem', margin: '0 auto', fontFamily: 'sans-serif' }}>
+        <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto', fontFamily: 'sans-serif' }}>
             <h2>Login to Task Board</h2>
             
             {error && <div style={{ color: 'red', marginBottom: '1rem', padding: '0.5rem', border: '1px solid red' }}>{error}</div>}

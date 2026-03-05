@@ -8,7 +8,7 @@ POST http://localhost:3000/register
 Content-Type: application/json
 
 {
-    "email": "devansh@email.com",
+    "email": "b@b.com",
     "password": "pass123",
     "name": "Devansh"
 }
@@ -20,8 +20,8 @@ POST http://localhost:3000/login
 Content-Type: application/json
 
 {
-    "email": "dev@example.com",
-    "password": "my-password"
+    "email": "b@b.com",
+    "password": "b"
 }
 
 
@@ -63,10 +63,10 @@ GET http://localhost:3000/projects
 ### ------------------------------------------
 ### 6. Update the Task (Simulate Drag & Drop)
 # CHANGE THE URL NUMBER BELOW to match the Issue ID from Step 4!
-PATCH http://localhost:3000/issues/1
+PATCH http://localhost:3000/invites/2
 Content-Type: application/json
 
 {
-    "status": "In Progress",
-    "priority": "CRITICAL"
+    "action" : "ACCEPT"
 }
+

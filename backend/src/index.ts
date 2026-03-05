@@ -403,16 +403,13 @@ app.get('/invites', authenticateToken, async (req: Request, res: Response) => {
 });
 
 
-app.patch('invites/:id', authenticateToken, async (req: Request, res: Response) => {
+app.patch('/invites/:id', authenticateToken, async (req: Request, res: Response) => {
     const inviteId = parseInt(req.params.id as string);
     const { action } = req.body;
     const loggedInUser = res.locals.user;
 
     try {
-        const invite = await prisma.projectMember.findUnique({
-            where: { id: inviteId }
-        });
-
+        const invite = await prisma.projectMember.findUnique({ where: { id: inviteId } });
         if (!invite) {
             return res.status(404).json({ error: 'Invite not found' });
         }

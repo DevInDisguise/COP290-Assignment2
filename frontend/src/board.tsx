@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from './api';
-import './board.css'; // <-- 1. Import the new CSS file!
+import './board.css';
 
 interface Issue {
     id: number;
@@ -33,6 +33,10 @@ export default function Board() {
     
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDesc, setNewTaskDesc] = useState('');
+
+    // --- NEW INVITE STATES ---
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteStatus, setInviteStatus] = useState<{message: string, type: 'success'|'error'} | null>(null);
 
     const fetchBoardData = async () => {
         try {
@@ -67,6 +71,26 @@ export default function Board() {
             fetchBoardData(); 
         } catch (err) {
             alert('Failed to create task');
+        }
+    };
+
+    // --- NEW INVITE LOGIC ---
+    const handleSendInvite = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setInviteStatus(null); // Clear old messages
+        
+        try {
+            await api.post(`/projects/${projectId}/invite`, { email: inviteEmail });
+            setInviteStatus({ message: 'Invite sent!', type: 'success' });
+            setInviteEmail(''); // Clear the input
+            
+            // Optional: Hide the success message after 3 seconds
+            setTimeout(() => setInviteStatus(null), 3000);
+        } catch (err: any) {
+            setInviteStatus({
+                message: err.response?.data?.error || 'Failed to send invite.',
+                type: 'error'
+            });
         }
     };
 
@@ -105,24 +129,46 @@ export default function Board() {
                 </button>
             </div>
 
-            <form onSubmit={handleCreateTask} className="create-task-form">
-                <h4 className="form-label">Add Task:</h4>
-                <input 
-                    className="task-input"
-                    value={newTaskTitle} 
-                    onChange={e => setNewTaskTitle(e.target.value)} 
-                    placeholder="Task Title" required 
-                />
-                <input 
-                    className="task-input task-input-desc"
-                    value={newTaskDesc} 
-                    onChange={e => setNewTaskDesc(e.target.value)} 
-                    placeholder="Description" required 
-                />
-                <button type="submit" className="create-button">
-                    Create
-                </button>
-            </form>
+            {/* --- TOP CONTROLS WRAPPER --- */}
+            <div className="top-controls">
+                <form onSubmit={handleCreateTask} className="create-task-form">
+                    <h4 className="form-label">Add Task:</h4>
+                    <input 
+                        className="task-input"
+                        value={newTaskTitle} 
+                        onChange={e => setNewTaskTitle(e.target.value)} 
+                        placeholder="Task Title" required 
+                    />
+                    <input 
+                        className="task-input task-input-desc"
+                        value={newTaskDesc} 
+                        onChange={e => setNewTaskDesc(e.target.value)} 
+                        placeholder="Description" required 
+                    />
+                    <button type="submit" className="create-button">
+                        Create
+                    </button>
+                </form>
+
+                <form onSubmit={handleSendInvite} className="invite-form">
+                    <h4 className="form-label">Invite Teammate:</h4>
+                    <input 
+                        type="email"
+                        className="invite-input"
+                        value={inviteEmail} 
+                        onChange={e => setInviteEmail(e.target.value)} 
+                        placeholder="Teammate's Email" required 
+                    />
+                    <button type="submit" className="btn-invite">
+                        Send Invite
+                    </button>
+                    {inviteStatus && (
+                        <span className={`invite-status status-${inviteStatus.type}`}>
+                            {inviteStatus.message}
+                        </span>
+                    )}
+                </form>
+            </div>
 
             <div className="columns-wrapper">
                 {columns.map((column) => (

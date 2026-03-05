@@ -171,3 +171,69 @@
     padding: 2rem;
     color: #333;
 }
+
+
+/* --- TOP CONTROLS (Add Task & Invite) --- */
+.top-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.create-task-form, .invite-form {
+    background: #e2e4e6;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex: 1; /* Makes them share the width equally */
+}
+
+.form-label {
+    margin: 0;
+    color: #222;
+    white-space: nowrap;
+}
+
+.task-input, .invite-input {
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.task-input-desc, .invite-input {
+    flex: 1; /* Stretches to fill space */
+}
+
+.create-button {
+    padding: 0.5rem 1.5rem;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-invite {
+    padding: 0.5rem 1.5rem;
+    background: #0052cc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.invite-status {
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+}
+
+.status-success { color: #00875a; font-weight: bold; }
+.status-error { color: #de350b; font-weight: bold; }
