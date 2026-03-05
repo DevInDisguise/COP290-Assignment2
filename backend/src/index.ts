@@ -102,7 +102,8 @@ app.post('/projects', authenticateToken, async (req: Request, res: Response) => 
                 members: {
                     create: {
                         userId: loggedInUser.userId,
-                        role: 'PROJECT_ADMIN'
+                        role: 'PROJECT_ADMIN',
+                        status: 'ACCEPTED'
                     }
                 },
                 boards: {
@@ -110,10 +111,10 @@ app.post('/projects', authenticateToken, async (req: Request, res: Response) => 
                         name: 'Default Board',
                         columns: {
                             create: [
-                                {name: 'To Do', order: 1},
-                                {name: 'In Progress', order: 2},
-                                {name: 'Review', order: 3},
-                                {name: 'Done', order: 4}
+                                { name: 'To Do', order: 1 },
+                                { name: 'In Progress', order: 2 },
+                                { name: 'Review', order: 3 },
+                                { name: 'Done', order: 4 }
                             ]
                         }
                     }
@@ -136,16 +137,16 @@ app.post('/projects', authenticateToken, async (req: Request, res: Response) => 
 });
 
 app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
-    const { 
-        title, 
-        description, 
-        type, 
-        status, 
-        priority, 
-        projectId, 
-        dueDate, 
-        assigneeId, 
-        parentId 
+    const {
+        title,
+        description,
+        type,
+        status,
+        priority,
+        projectId,
+        dueDate,
+        assigneeId,
+        parentId
     }: {
         title: string;
         description: string;
@@ -157,7 +158,7 @@ app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
         assigneeId?: number;
         parentId?: number;
     } = req.body;
-    
+
     const reporterId = res.locals.user.userId;
 
     try {
@@ -166,7 +167,8 @@ app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
             where: {
                 AND: [
                     { projectId },
-                    { userId: reporterId }
+                    { userId: reporterId },
+                    { status: 'ACCEPTED' }
                 ]
             }
         });
@@ -179,9 +181,9 @@ app.post('/issues', authenticateToken, async (req: Request, res: Response) => {
             data: {
                 title,
                 description,
-                type,     
-                status,    
-                priority,    
+                type,
+                status,
+                priority,
                 projectId,
                 reporterId,
                 dueDate: dueDate ? new Date(dueDate) : null,
@@ -201,7 +203,7 @@ app.patch('/issues/:id', authenticateToken, async (req: Request, res: Response) 
     const issueId = parseInt(req.params.id as string);
     const userId = res.locals.user.userId;
 
-    const {status, priority, assigneeId, title, description} = req.body;
+    const { status, priority, assigneeId, title, description } = req.body;
 
     try {
         // Get the issue to find its project
@@ -218,7 +220,8 @@ app.patch('/issues/:id', authenticateToken, async (req: Request, res: Response) 
             where: {
                 AND: [
                     { projectId: issue.projectId },
-                    { userId }
+                    { userId },
+                    { status: 'ACCEPTED' }
                 ]
             }
         });
@@ -253,7 +256,8 @@ app.get('/projects', authenticateToken, async (req: Request, res: Response) => {
             where: {
                 members: {
                     some: {
-                        userId: loggedInUser.userId
+                        userId: loggedInUser.userId,
+                        status: 'ACCEPTED'
                     }
                 }
             },
@@ -286,7 +290,8 @@ app.get('/projects/:id', authenticateToken, async (req: Request, res: Response) 
             where: {
                 AND: [
                     { projectId },
-                    { userId: loggedInUser.userId }
+                    { userId: loggedInUser.userId },
+                    { status: 'ACCEPTED' }
                 ]
             }
         });
@@ -295,7 +300,7 @@ app.get('/projects/:id', authenticateToken, async (req: Request, res: Response) 
             return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
         }
         const project = await prisma.project.findUnique({
-            where: { id: projectId },   
+            where: { id: projectId },
             include: {
                 members: {
                     include: {
@@ -342,7 +347,8 @@ app.delete('/issues/:id', authenticateToken, async (req: Request, res: Response)
             where: {
                 AND: [
                     { projectId: issue.projectId },
-                    { userId }
+                    { userId },
+                    { status: 'ACCEPTED' }
                 ]
             }
         });
@@ -360,9 +366,151 @@ app.delete('/issues/:id', authenticateToken, async (req: Request, res: Response)
         console.error(error);
         res.status(500).json({ error: 'Failed to delete issue' });
     }
-});     
+});
+
+app.post('/logout/', authenticateToken, (req: Request, res: Response) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        maxAge: 3600000
+    });
+    res.json({ message: 'Logout successful!' });
+});
+
+app.get('/invites', authenticateToken, async (req: Request, res: Response) => {
+    const loggedInUser = res.locals.user;
+    try {
+        const invites = await prisma.projectMember.findMany({
+            where: {
+                userId: loggedInUser.userId,
+                status: 'PENDING'
+            },
+            include: {
+                project: {
+                    select: {
+                        name: true,
+                        description: true,
+                        members: true
+
+                    }
+                }
+            }
+        });
+        res.json({ invites });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch invites' });
+    }
+});
 
 
+app.patch('invites/:id', authenticateToken, async (req: Request, res: Response) => {
+    const inviteId = parseInt(req.params.id as string);
+    const { action } = req.body;
+    const loggedInUser = res.locals.user;
+
+    try {
+        const invite = await prisma.projectMember.findUnique({
+            where: { id: inviteId }
+        });
+
+        if (!invite) {
+            return res.status(404).json({ error: 'Invite not found' });
+        }
+
+        if (invite.userId !== loggedInUser.userId) {
+            return res.status(403).json({ error: 'Access denied. This invite is not for you.' });
+        }
+
+        if (action === 'ACCEPT') {
+            await prisma.projectMember.update({
+                where: { id: inviteId },
+                data: { status: 'ACCEPTED' }
+            });
+            res.json({ message: 'Welcome to the project!' });
+        } else if (action === 'REJECT') {
+            await prisma.projectMember.delete({
+                where: { id: inviteId },
+            });
+            res.json({ message: 'Invite rejected and removed.' });
+        } else {
+            res.status(400).json({ error: 'Invalid action. Use "accept" or "reject".' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to process invite' });
+    }
+});
+
+app.post('/projects/:id/invite', authenticateToken, async (req: Request, res: Response) => {
+    const projectId = parseInt(req.params.id as string);
+    const { email, role } = req.body;
+    const loggedInUser = res.locals.user;
+
+    try {
+        const sendermembership = await prisma.projectMember.findFirst({
+            where: {
+                AND: [
+                    { projectId },
+                    { userId: loggedInUser.userId },
+                    { status: 'ACCEPTED' }
+                ]
+            }
+        });
+
+        if (!sendermembership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: {
+                members: true
+            }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const membership = project.members.find(m => m.userId === loggedInUser.userId && m.status === 'ACCEPTED');
+        if (!membership) {
+            return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
+        }
+
+        const userToInvite = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (!userToInvite) {
+            return res.status(404).json({ error: 'User with this email not found' });
+        }
+
+        const existingInvite = await prisma.projectMember.findFirst({
+            where: {
+                projectId,
+                userId: userToInvite.id
+            }
+        });
+
+        if (existingInvite) {
+            return res.status(400).json({ error: 'User is already a member or has a pending invite for this project' });
+        }
+
+        await prisma.projectMember.create({
+            data: {
+                projectId,
+                userId: userToInvite.id,
+                role,
+                status: 'PENDING'
+            }
+        });
+
+        res.json({ message: 'User invited successfully!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to invite user' });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('The Task Board Backend is Running!');
